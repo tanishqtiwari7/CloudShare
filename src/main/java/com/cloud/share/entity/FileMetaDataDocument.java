@@ -1,6 +1,5 @@
 package com.cloud.share.entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +19,9 @@ public class FileMetaDataDocument {
     @Id
     private String id;
 
-    private String name;
+    private String uploadFileName;  // Unique filename stored in MinIO
+
+    private String originalFileName;  // Original filename for display
 
     private String type;
 
@@ -30,7 +31,7 @@ public class FileMetaDataDocument {
 
     private Boolean isPublic;
 
-    private String fileLocation;
+    private String fileLocation;  // This will now store the MinIO object key/path
 
     private LocalDateTime uploadAt;
 
@@ -40,5 +41,4 @@ public class FileMetaDataDocument {
             this.id = UUID.randomUUID().toString();
         }
     }
-
 }

@@ -1,6 +1,5 @@
 package com.cloud.share.dto;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +13,9 @@ public class FileMetaDataDto {
 
     String id;
 
-    private String name;
+    private String uploadFileName;  // Unique filename in MinIO
+
+    private String originalFileName;  // Original filename for display
 
     private String type;
 
@@ -24,8 +25,12 @@ public class FileMetaDataDto {
 
     private Boolean isPublic;
 
-    private String fileLocation;
+    private String fileLocation;  // MinIO object key
 
     private LocalDateTime uploadAt;
 
+    // Helper method to get display name (using originalFileName)
+    public String getDisplayName() {
+        return originalFileName;
+    }
 }

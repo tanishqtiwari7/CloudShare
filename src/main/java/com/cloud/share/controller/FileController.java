@@ -1,29 +1,22 @@
 package com.cloud.share.controller;
 
-
 import com.cloud.share.dto.FileMetaDataDto;
 import com.cloud.share.exception.ResourceNotFoundException;
 import com.cloud.share.serviceImpl.FileMetaDataService;
+import com.cloud.share.serviceImpl.MinIOService;
 import com.cloud.share.serviceImpl.UserCreditsService;
-import com.cloud.share.util.CommonUtil;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +25,14 @@ import java.util.Map;
 @RequestMapping("/files")
 public class FileController {
 
-
     @Autowired
     private FileMetaDataService fileMetaDataService;
 
-
     @Autowired
     private UserCreditsService userCreditsService;
+
+    @Autowired
+    private MinIOService minIOService;
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile[] files) throws IOException {
@@ -52,7 +46,6 @@ public class FileController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-
     @GetMapping("/my")
     public ResponseEntity<?> getFilesForCurrentUser() {
         List<FileMetaDataDto> files = fileMetaDataService.getFiles();
@@ -63,25 +56,32 @@ public class FileController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-
     @GetMapping("/public/{id}")
     public ResponseEntity<?> getPublicFile(@PathVariable String id) throws ResourceNotFoundException {
         FileMetaDataDto file = fileMetaDataService.getPublicFile(id);
         return new ResponseEntity<>(file, HttpStatus.OK);
     }
 
-
     @GetMapping("/download/{id}")
-    public ResponseEntity<Resource> download(@PathVariable String id) throws ResourceNotFoundException, MalformedURLException {
-        FileMetaDataDto file = fileMetaDataService.getDownloadableFile(id);
+    public ResponseEntity<Resource> download(@PathVariable String id) throws ResourceNotFoundException {
+        try {
+            // This method handles both public files and files owned by current user
+            FileMetaDataDto file = fileMetaDataService.getDownloadableFileById(id);
 
-        Path path = Paths.get(file.getFileLocation());
+            // Get file stream from MinIO
+            InputStream inputStream = minIOService.downloadFile(file.getUploadFileName());
+            InputStreamResource resource = new InputStreamResource(inputStream);
 
-        Resource resource = new UrlResource(path.toUri());
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getName() + "\"")
-                .body(resource);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentLength(file.getSize())
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + file.getOriginalFileName() + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Error downloading file: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/delete/{id}")
@@ -90,10 +90,27 @@ public class FileController {
         return new ResponseEntity<>("Deleted Successfully", HttpStatus.OK);
     }
 
-
     @PatchMapping("/{id}/toggle-public")
     public ResponseEntity<?> togglePublic(@PathVariable String id) throws ResourceNotFoundException {
-      FileMetaDataDto fileMetaDataDto =  fileMetaDataService.togglePublic(id);
-      return new ResponseEntity<>(fileMetaDataDto, HttpStatus.OK);
+        FileMetaDataDto fileMetaDataDto = fileMetaDataService.togglePublic(id);
+        return new ResponseEntity<>(fileMetaDataDto, HttpStatus.OK);
+    }
+
+    // Optional: Add endpoint to get direct download URL
+    @GetMapping("/url/{id}")
+    public ResponseEntity<?> getFileUrl(@PathVariable String id) throws ResourceNotFoundException {
+        try {
+            FileMetaDataDto file = fileMetaDataService.getPublicFile(id);
+            String downloadUrl = minIOService.getFileUrl(file.getUploadFileName());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("downloadUrl", downloadUrl);
+            response.put("fileName", file.getOriginalFileName());
+            response.put("expiresIn", "24 hours");
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Error generating file URL: " + e.getMessage());
+        }
     }
 }

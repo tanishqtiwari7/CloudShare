@@ -1,35 +1,26 @@
 package com.cloud.share.serviceImpl;
 
-
 import com.cloud.share.dto.FileMetaDataDto;
 import com.cloud.share.entity.FileMetaDataDocument;
 import com.cloud.share.entity.User;
 import com.cloud.share.exception.ResourceNotFoundException;
 import com.cloud.share.exception.SuccessException;
-import com.cloud.share.exception.ValidationException;
 import com.cloud.share.repository.FileMetaDataRepo;
 import com.cloud.share.util.CommonUtil;
-import org.apache.commons.lang3.ObjectUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class FileMetaDataService {
-
 
     @Autowired
     private UserCreditsService userCreditsService;
@@ -40,62 +31,57 @@ public class FileMetaDataService {
     @Autowired
     private ModelMapper mapper;
 
-
+    @Autowired
+    private MinIOService minIOService;
 
     public List<FileMetaDataDto> uploadFiles(MultipartFile files[]) throws IOException {
         User user = CommonUtil.getLoggedInUser();
 
-        if(!userCreditsService.hasEnoughCredits(files.length)){
-            throw  new SuccessException("Not enough credits . Please purchase your credit first");
+        if (!userCreditsService.hasEnoughCredits(files.length)) {
+            throw new SuccessException("Not enough credits . Please purchase your credit first");
         }
 
-        List<FileMetaDataDocument>  savedFiles  = new ArrayList<>();
-
-
-        Path uploadPath =Paths.get("upload").toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath);
+        List<FileMetaDataDocument> savedFiles = new ArrayList<>();
 
         for (MultipartFile file : files) {
-          String fileName =   UUID.randomUUID()+"."+ StringUtils.getFilenameExtension(file.getOriginalFilename());
-          Path targetLocation =uploadPath.resolve(fileName);
-          Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            // Upload to MinIO and get unique filename
+            String uniqueFileName = minIOService.uploadFile(file);
 
-          FileMetaDataDocument fileMetaData =FileMetaDataDocument.builder()
-                  .fileLocation(targetLocation.toString())
-                  .name(file.getOriginalFilename())
-                  .size(file.getSize())
-                  .type(file.getContentType())
-                  .username(user.getEmail())
-                  .isPublic(false)
-                  .uploadAt(LocalDateTime.now())
-                  .build();
+            FileMetaDataDocument fileMetaData = FileMetaDataDocument.builder()
+                    .uploadFileName(uniqueFileName)  // Unique filename in MinIO
+                    .originalFileName(file.getOriginalFilename())  // Original filename for display
+                    .fileLocation(uniqueFileName)  // MinIO object key (same as uploadFileName)
+                    .size(file.getSize())
+                    .type(file.getContentType())
+                    .username(user.getEmail())
+                    .isPublic(false)
+                    .uploadAt(LocalDateTime.now())
+                    .build();
 
-          // decrease 1 credit for 1 file
+            // decrease 1 credit for 1 file
             userCreditsService.consumeCredits();
 
-
-            // add in list for send again
+            // save to database
             fileMetaDataRepo.save(fileMetaData);
 
-            // save each file
+            // add to response list
             savedFiles.add(fileMetaData);
         }
 
-       return savedFiles.stream().map(f -> mapper.map(f, FileMetaDataDto.class) ).toList();
+        return savedFiles.stream().map(f -> mapper.map(f, FileMetaDataDto.class)).toList();
     }
-
 
     public List<FileMetaDataDto> getFiles() {
         User user = CommonUtil.getLoggedInUser();
 
         List<FileMetaDataDocument> list = fileMetaDataRepo.findByUsername(user.getEmail());
 
-        return list.stream().map(f -> mapper.map(f, FileMetaDataDto.class) ).toList();
+        return list.stream().map(f -> mapper.map(f, FileMetaDataDto.class)).toList();
     }
 
     public FileMetaDataDto getPublicFile(String id) throws ResourceNotFoundException {
         Optional<FileMetaDataDocument> file = fileMetaDataRepo.findById(id);
-        if(file.isEmpty() || !file.get().getIsPublic()){
+        if (file.isEmpty() || !file.get().getIsPublic()) {
             throw new ResourceNotFoundException("Unable to get the file");
         }
 
@@ -104,52 +90,64 @@ public class FileMetaDataService {
 
     public FileMetaDataDto getDownloadableFile(String id) throws ResourceNotFoundException {
         Optional<FileMetaDataDocument> file = fileMetaDataRepo.findById(id);
-        if(file.isEmpty() || !file.get().getIsPublic()){
+        if (file.isEmpty() || !file.get().getIsPublic()) {
             throw new ResourceNotFoundException("file not found");
         }
 
         return mapper.map(file.get(), FileMetaDataDto.class);
-
     }
-
 
     public void deleteFile(String id) throws Exception {
-       try{
-           User user = CommonUtil.getLoggedInUser();
-           FileMetaDataDocument file = fileMetaDataRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("file not found"));
+        try {
+            User user = CommonUtil.getLoggedInUser();
+            FileMetaDataDocument file = fileMetaDataRepo.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("file not found"));
 
+            // only allowed if user owns the file
+            if (!file.getUsername().equals(user.getEmail())) {
+                throw new RuntimeException("Not your file only try to access yours");
+            }
 
-           // only allowed if user own the file
-           if(!file.getUsername().equals(user.getEmail())){
-               throw new RuntimeException("Not your file only try to access yuors");
-           }
-
-           // now delete from storage
-           Path path= Paths.get(file.getFileLocation());
-            Files.deleteIfExists(path);
-
+            // delete from MinIO storage
+            minIOService.deleteFile(file.getUploadFileName());
 
             // delete from database
-           fileMetaDataRepo.deleteById(id);
-           // done
+            fileMetaDataRepo.deleteById(id);
 
-
-       } catch (Exception e) {
-           throw new RuntimeException("Error while deleting file");
-       }
-
-
+        } catch (Exception e) {
+            throw new RuntimeException("Error while deleting file: " + e.getMessage());
+        }
     }
-
-
 
     // change public <--> private
     public FileMetaDataDto togglePublic(String id) throws ResourceNotFoundException {
-        FileMetaDataDocument file = fileMetaDataRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("file not found"));
+        FileMetaDataDocument file = fileMetaDataRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("file not found"));
         file.setIsPublic(!file.getIsPublic());
         FileMetaDataDocument save = fileMetaDataRepo.save(file);
         return mapper.map(save, FileMetaDataDto.class);
     }
 
 
+
+
+
+    public FileMetaDataDto getDownloadableFileById(String id) throws ResourceNotFoundException {
+        Optional<FileMetaDataDocument> fileOpt = fileMetaDataRepo.findById(id);
+        if (fileOpt.isEmpty()) {
+            throw new ResourceNotFoundException("File not found");
+        }
+
+        FileMetaDataDocument file = fileOpt.get();
+
+        // Since download is public, allow anyone to download any file
+        // If you want to restrict to public files only, uncomment the next lines:
+    /*
+    if (!file.getIsPublic()) {
+        throw new ResourceNotFoundException("File is private and cannot be downloaded");
+    }
+    */
+
+        return mapper.map(file, FileMetaDataDto.class);
+    }
 }
