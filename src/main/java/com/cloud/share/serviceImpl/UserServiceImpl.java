@@ -121,19 +121,19 @@ public class UserServiceImpl implements UserService {
                 + "</div>"
                 + "<div class='content'>"
                 + "<p>Hi <b>" + savedUser.getName() + "</b>,</p>"
-                + "<p>We received a request to reset your password for your NoteNestor account.</p>"
+                + "<p>We received a request to reset your password for your CloudShare account.</p>"
                 + "<p>If you made this request, please click the button below to reset your password:</p>"
                 + "<a href=\"" + url + "?uid=" + savedUser.getId() +
                 "&token=" + resetToken + "\" class='button'>Reset My Password</a>"
-                + "<p>If you didn’t request a password reset, you can safely ignore this email. "
-                + "</p>"
+                + "<p>If you didn’t request a password reset, you can safely ignore this email.</p>"
                 + "</div>"
                 + "<div class='footer'>"
-                + "<p>Thanks,<br><b>The NoteNestor Team</b></p>"
+                + "<p>Thanks,<br><b>The CloudShare Team</b></p>"
                 + "</div>"
                 + "</div>"
                 + "</body>"
                 + "</html>";
+
 
         EmailRequest emailRequest = EmailRequest.builder()
                 .to(savedUser.getEmail())

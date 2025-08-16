@@ -146,21 +146,23 @@ public class AuthServiceImpl implements AuthService {
                 + "<body>"
                 + "<div class='container'>"
                 + "<div class='header'>"
-                + "<h1>Welcome to NoteNestor!</h1>"
+                + "<h1>Welcome to CloudShare!</h1>"
                 + "</div>"
                 + "<div class='content'>"
                 + "<p>Hi <b>" + savedUser.getName() + "</b>,</p>"
                 + "<p>Thanks for registering with us. We're excited to have you on board! 🎉</p>"
                 + "<p>Please verify your account by clicking the button below:</p>"
                 + "<a href=\"" + url + "?uid=" + savedUser.getId() +
-                "&token=" + savedUser.getStatus().getVerificationCode() + "\" class='button'>Verify My Account</a>" + "<p>If you didn’t create this account, you can safely ignore this email.</p>"
+                "&token=" + savedUser.getStatus().getVerificationCode() + "\" class='button'>Verify My Account</a>"
+                + "<p>If you didn’t create this account, you can safely ignore this email.</p>"
                 + "</div>"
                 + "<div class='footer'>"
-                + "<p>Thanks,<br><b>The NoteNestor Team</b></p>"
+                + "<p>Thanks,<br><b>The CloudShare Team</b></p>"
                 + "</div>"
                 + "</div>"
                 + "</body>"
                 + "</html>";
+
 
 
         EmailRequest emailRequest = EmailRequest.builder()
