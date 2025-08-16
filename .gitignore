@@ -6,8 +6,10 @@ target/
 
 
 
-### Application Properties ###
+# Ignore application config
 src/main/resources/application.properties
+src/main/resources/application-dev.properties
+
 
 ### STS ###
 .apt_generated
