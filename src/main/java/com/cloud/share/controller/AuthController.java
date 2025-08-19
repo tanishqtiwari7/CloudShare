@@ -23,7 +23,8 @@ import java.io.UnsupportedEncodingException;
 @Tag(name="UserAuthentication",description = "All the Authentication APIs")
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})public class AuthController {
+@CrossOrigin("*")
+public class AuthController {
 
     @Autowired
     private AuthService authService;

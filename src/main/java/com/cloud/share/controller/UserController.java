@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name="After Auth done",description = "Some User special need")
 @RestController
 @RequestMapping("/api/user")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin("*")
 public class UserController {
 
     @Autowired

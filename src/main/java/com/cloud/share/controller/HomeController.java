@@ -21,7 +21,7 @@ import java.io.UnsupportedEncodingException;
 @Tag(name="Some User operation",description = "basic user level Apis")
 @RestController
 @RequestMapping("/api/home")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin("*")
 public class HomeController {
 
     // slf4j

@@ -23,7 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/files")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin("*")
 public class FileController {
 
     @Autowired
