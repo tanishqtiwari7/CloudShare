@@ -23,7 +23,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/files")
-@CrossOrigin("*")
 public class FileController {
 
     @Autowired

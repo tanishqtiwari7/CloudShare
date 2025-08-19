@@ -1,4 +1,4 @@
-package com.cloud.share.config.security;
+package com.cloud.share.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

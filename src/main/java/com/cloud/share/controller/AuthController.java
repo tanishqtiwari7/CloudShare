@@ -23,7 +23,6 @@ import java.io.UnsupportedEncodingException;
 @Tag(name="UserAuthentication",description = "All the Authentication APIs")
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin("*")
 public class AuthController {
 
     @Autowired

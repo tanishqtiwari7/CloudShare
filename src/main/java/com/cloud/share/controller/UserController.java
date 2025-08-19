@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name="After Auth done",description = "Some User special need")
 @RestController
 @RequestMapping("/api/user")
-@CrossOrigin("*")
 public class UserController {
 
     @Autowired
