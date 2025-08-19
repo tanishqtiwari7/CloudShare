@@ -7,13 +7,11 @@ import com.cloud.share.dto.UserCreditsDto;
 import com.cloud.share.serviceImpl.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/payments")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class PaymentController {
 
     @Autowired
