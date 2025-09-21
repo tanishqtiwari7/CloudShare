@@ -1,3 +1,4 @@
+
 {
   "name": "cloudshare-frontend",
   "private": true,
@@ -31,6 +32,6 @@
     "eslint-plugin-react-refresh": "^0.4.3",
     "postcss": "^8.4.27",
     "tailwindcss": "^3.4.17",
-    "vite": "^4.4.5"
+    "vite": "^7.1.6"
   }
 }
